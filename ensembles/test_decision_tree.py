@@ -36,18 +36,28 @@ def test_train_test_split_performance(data):
 
     train_tree = DecisionTree(root=build_tree(train_data, max_depth=3, current_depth=0))
 
-    correct_predictions = 0
-    for i in range(len(test_data.x)):
-        sample = test_data.x.iloc[i]
-        prediction = train_tree.root.predict(sample)
-        actual = test_data.y.iloc[i]
-        if prediction == actual:
-            correct_predictions += 1
+    metrics = train_tree.evaluate(test_data.x, test_data.y)
 
-    accuracy = correct_predictions / len(test_data.x)
-    assert accuracy > 0.5, (
-        f"Accuracy {accuracy:.2f} should be better than random guessing"
+    assert metrics["accuracy"] > 0.5, (
+        f"Accuracy {metrics['accuracy']:.2f} should be better than random guessing"
     )
+
+
+def test_overall_metrics_calculation(data):
+    tree = DecisionTree(root=build_tree(data, max_depth=3, current_depth=0))
+
+    metrics = tree.evaluate(data.x, data.y)
+
+    assert "accuracy" in metrics
+    assert "precision" in metrics
+    assert "recall" in metrics
+    assert "f1_score" in metrics
+    assert "confusion_matrix" in metrics
+
+    assert 0 <= metrics["accuracy"] <= 1
+    assert 0 <= metrics["precision"] <= 1
+    assert 0 <= metrics["recall"] <= 1
+    assert 0 <= metrics["f1_score"] <= 1
 
 
 def test_leaf_node_creation(data):
