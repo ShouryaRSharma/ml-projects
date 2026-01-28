@@ -1,16 +1,30 @@
 from dataclasses import dataclass
 
+import sklearn
 import matplotlib
 import matplotlib.pyplot as plt
-import sklearn.datasets
+import pandas as pd
 import typer
-from linear_regression.common import ModelState, TrainingData
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 
 matplotlib.use("TkAgg")
 app = typer.Typer()
+
+
+@dataclass
+class TrainingData:
+    x: pd.Series
+    y: pd.Series
+
+
+@dataclass
+class ModelState:
+    w: float
+    b: float
+    lr: float
+    iterations: int
 
 
 @dataclass
@@ -21,8 +35,10 @@ class Visualizer:
 
 
 def fetch_data() -> TrainingData:
-    dataset = sklearn.datasets.fetch_california_housing(as_frame=True)
-    return TrainingData(x=dataset.frame["MedInc"], y=dataset.frame["MedHouseVal"])
+    dataset = sklearn.datasets.fetch_california_housing(as_frame=True)  # pyright: ignore[reportUndefinedVariable]
+    df = dataset.frame
+    df = df[df["MedHouseVal"] < 5.0]
+    return TrainingData(x=df["MedInc"], y=df["MedHouseVal"])
 
 
 def init_visualizer(data: TrainingData, model: ModelState) -> Visualizer:
@@ -51,7 +67,9 @@ def update_ui(
     plt.pause(0.01)
 
 
-def optimise(data: TrainingData, model: ModelState, viz: Visualizer) -> ModelState:
+def optimise(
+    data: TrainingData, model: ModelState, viz: Visualizer, log_interval: int = 100
+) -> ModelState:
     for i in range(model.iterations):
         # Calculate current predictions and error
         y_pred = model.w * data.x + model.b
@@ -60,27 +78,47 @@ def optimise(data: TrainingData, model: ModelState, viz: Visualizer) -> ModelSta
         # Gradient Descent
         derivative_b = -2 * error.mean()
         derivative_w = -2 * (data.x * error).mean()
-
         model.b -= model.lr * derivative_b
         model.w -= model.lr * derivative_w
 
         if i % 10 == 0:
             update_ui(viz, data, model, i)
 
+        if i % log_interval == 0:
+            loss = (error**2).mean()
+            print(
+                f"Iteration {i:4d} | Loss: {loss:.6f} | W: {model.w:.6f} | B: {model.b:.6f}"
+            )
+
     return model
 
 
 @app.command()
-def train(iterations: int = 500, lr: float = 0.01, w: float = 0.0, b: float = 0.0):
+def train(
+    iterations: int = 1000,
+    lr: float = 0.01,
+    w: float = 0.0,
+    b: float = 0.0,
+    log_interval: int = 100,
+):
     data = fetch_data()
     model = ModelState(w=w, b=b, lr=lr, iterations=iterations)
     viz = init_visualizer(data, model)
 
     print(f"Starting: W={model.w}, B={model.b}, LR={model.lr}")
+    print("-" * 80)
 
-    final_state = optimise(data, model, viz)
+    final_state = optimise(data, model, viz, log_interval)
 
-    print(f"Final results -> W: {final_state.w:.4f}, B: {final_state.b:.4f}")
+    print("-" * 80)
+    print("Training complete!")
+
+    y_pred = final_state.w * data.x + final_state.b
+    final_loss = ((data.y - y_pred) ** 2).mean()
+
+    print(f"Final Loss: {final_loss:.6f}")
+    print(f"Final W: {final_state.w:.6f}")
+    print(f"Final B: {final_state.b:.6f}")
 
     plt.ioff()
     plt.show()
