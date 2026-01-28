@@ -40,6 +40,48 @@ class TrainingData:
 class DecisionTree:
     root: Node
 
+    def predict(self, sample: pd.Series) -> int:
+        return self.root.predict(sample)
+
+    def evaluate(self, x: pd.DataFrame, y: pd.Series) -> dict:
+        predictions = []
+        for i in range(len(x)):
+            sample = x.iloc[i]
+            predictions.append(self.root.predict(sample))
+
+        predictions = pd.Series(predictions, index=y.index)
+
+        correct = (predictions == y).sum()
+        total = len(y)
+        accuracy = correct / total
+
+        # Calculate precision, recall for binary classification
+        tp = ((predictions == 1) & (y == 1)).sum()
+        fp = ((predictions == 1) & (y == 0)).sum()
+        fn = ((predictions == 0) & (y == 1)).sum()
+        tn = ((predictions == 0) & (y == 0)).sum()
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1_score = (
+            2 * (precision * recall) / (precision + recall)
+            if (precision + recall) > 0
+            else 0
+        )
+
+        return {
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1_score,
+            "confusion_matrix": {
+                "true_positives": int(tp),
+                "false_positives": int(fp),
+                "true_negatives": int(tn),
+                "false_negatives": int(fn),
+            },
+        }
+
     def print_tree(self) -> None:
         def _print_recursive(node: Node, prefix: str, is_last: bool):
             connector = "└── " if is_last else "├── "
