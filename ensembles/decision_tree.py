@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+from abc import abstractmethod
+from dataclasses import dataclass
+
+import pandas as pd
+import seaborn as sns
+import typer
+
+app = typer.Typer()
+
+
+@dataclass
+class TrainingData:
+    x: pd.DataFrame
+    y: pd.Series
+    features: list[str]
+
+    @classmethod
+    def create(cls) -> TrainingData:
+        df = sns.load_dataset("titanic")
+        df = df.dropna()
+        df["sex"] = df["sex"].replace({"male": 0, "female": 1})
+
+        features = ["pclass", "sex", "age", "sibsp", "parch", "fare"]
+        x = df[features]
+        y = df["survived"]
+
+        return TrainingData(x=x, y=y, features=features)  # type: ignore
+
+    def bootstrapped(self: TrainingData) -> TrainingData:
+        return TrainingData(
+            x=self.x.sample(frac=1, replace=True).reset_index(drop=True),
+            y=self.y.sample(frac=1, replace=True).reset_index(drop=True),
+            features=self.features,
+        )
+
+
+@dataclass
+class DecisionTree:
+    root: Node
+
+    def print_tree(self) -> None:
+        def _print_recursive(node: Node, prefix: str, is_last: bool):
+            connector = "└── " if is_last else "├── "
+
+            if isinstance(node, LeafNode):
+                node_info = f"Predict: {node.majority_class} (samples={node.samples}, gini={node.gini_impurity:.3f})"
+            else:
+                node_info = f"[ {node.feature} <= {node.threshold:.2f} ] (samples={node.samples}, gini={node.gini_impurity:.3f})"
+
+            print(f"{prefix}{connector}{node_info}")
+
+            child_prefix = prefix + ("    " if is_last else "│   ")
+
+            if not isinstance(node, LeafNode):
+                _print_recursive(node.left_child, child_prefix, is_last=False)
+                _print_recursive(node.right_child, child_prefix, is_last=True)
+
+        if self.root:
+            _print_recursive(self.root, "", True)
+
+
+@dataclass
+class Node:
+    gini_impurity: float
+    samples: int
+
+    @abstractmethod
+    def predict(self, sample: pd.Series) -> int:
+        pass
+
+
+@dataclass
+class DecisionNode(Node):
+    feature: str
+    left_child: Node
+    right_child: Node
+    threshold: float
+
+    def predict(self, sample: pd.Series) -> int:
+        if sample[self.feature] <= self.threshold:
+            return self.left_child.predict(sample)
+        else:
+            return self.right_child.predict(sample)
+
+
+@dataclass
+class LeafNode(Node):
+    majority_class: int
+
+    def predict(self, sample: pd.Series) -> int:
+        return self.majority_class
+
+
+def gini_impurity(y: pd.Series) -> float:
+    if len(y) == 0:
+        return 0.0
+
+    probs = y.value_counts(normalize=True)
+
+    return 1.0 - (probs**2).sum()
+
+
+def create_leaf_node(y: pd.Series) -> LeafNode:
+    majority_class = y.value_counts().idxmax()
+    impurity = gini_impurity(y)
+    samples = len(y)
+
+    return LeafNode(
+        gini_impurity=impurity,
+        samples=samples,
+        majority_class=majority_class,
+    )
+
+
+def find_best_split(
+    x: pd.DataFrame, y: pd.Series, features: list[str]
+) -> tuple[str | None, float | None]:
+    best_gini = float("inf")
+    best_feature = None
+    best_threshold = None
+
+    for feature in features:
+        thresholds = x[feature].unique()
+        for threshold in thresholds:
+            left_mask = x[feature] <= threshold
+            right_mask = x[feature] > threshold
+
+            y_left = y[left_mask]
+            if len(y_left) == 0 or len(y[left_mask]) == len(y):
+                continue  # Decision node or useless node
+
+            y_right = y[right_mask]
+
+            gini_left = gini_impurity(y_left)
+            gini_right = gini_impurity(y_right)
+
+            weighted_fini_left = (len(y_left) / len(y)) * gini_left
+            weighted_gini_right = (len(y_right) / len(y)) * gini_right
+            weighted_gini = weighted_fini_left + weighted_gini_right
+
+            if weighted_gini < best_gini:
+                best_gini = weighted_gini
+                best_feature = feature
+                best_threshold = threshold
+
+    return best_feature, best_threshold
+
+
+def build_tree(data: TrainingData, max_depth: int, current_depth: int) -> Node:
+    feature, threshold = find_best_split(data.x, data.y, data.features)
+    if len(data.y.unique()) == 1 or feature is None or current_depth >= max_depth:
+        return create_leaf_node(data.y)
+
+    left_mask = data.x[feature] <= threshold
+    right_mask = data.x[feature] > threshold
+    build_left = build_tree(
+        data=TrainingData(
+            x=data.x[left_mask], y=data.y[left_mask], features=data.features
+        ),
+        max_depth=max_depth,
+        current_depth=current_depth + 1,
+    )
+    build_right = build_tree(
+        data=TrainingData(
+            x=data.x[right_mask], y=data.y[right_mask], features=data.features
+        ),
+        max_depth=max_depth,
+        current_depth=current_depth + 1,
+    )
+
+    return DecisionNode(
+        feature=feature,
+        gini_impurity=gini_impurity(data.y),
+        samples=len(data.y),
+        left_child=build_left,
+        right_child=build_right,
+        threshold=threshold,
+    )
