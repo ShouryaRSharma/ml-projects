@@ -31,4 +31,3 @@
 1. **Install:** `pip install xgboost`.
 2. **Implementation:** Use `XGBClassifier` on the same Titanic data.
 3. **The Comparison:** Compare the accuracy of your "Scratch" model, the `sklearn` Random Forest, and `XGBoost`.
-4. **Self
