@@ -96,7 +96,7 @@ def optimise(
 @app.command()
 def train(
     iterations: int = 1000,
-    lr: float = 0.01,
+    lr: float = 0.001,
     w: float = 0.0,
     b: float = 0.0,
     log_interval: int = 100,

@@ -19,11 +19,8 @@ to a high-performance Gradient Boosting library (XGBoost).
 
 * **Matt Sossna**: [Random Forest by Hand](https://mattsosna.com/Random-forest-by-hand/)
 * **StatQuest:** [Random Forests Part 1 - Building and Using](https://www.youtube.com/watch?v=J4Wdy0Wc_xQ)
-* **AssemblyAI:** [Implementing Random Forest from Scratch]
-  (https://www.youtube.com/watch?v=kFwe2ZZU7yw) (Great for the "Scratch" logic).
-* **StatQuest:** [XGBoost Part 1: Regression]
-  (https://www.youtube.com/watch?v=OtD8wVaFm6E) (Even for classification, start here
-  to get the logic).
+* **AssemblyAI:** [Implementing Random Forest from Scratch](https://www.youtube.com/watch?v=kFwe2ZZU7yw) .
+* **StatQuest:** [XGBoost Part 1: Regression](https://www.youtube.com/watch?v=OtD8wVaFm6E)
 
 ## 🛠️ Your Mission
 
