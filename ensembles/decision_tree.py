@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
 from abc import abstractmethod
 from dataclasses import dataclass
 import random
