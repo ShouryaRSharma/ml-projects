@@ -204,9 +204,9 @@ def find_best_split(
             gini_left = gini_impurity(y_left)
             gini_right = gini_impurity(y_right)
 
-            weighted_fini_left = (len(y_left) / len(y)) * gini_left
+            weighted_gini_left = (len(y_left) / len(y)) * gini_left
             weighted_gini_right = (len(y_right) / len(y)) * gini_right
-            weighted_gini = weighted_fini_left + weighted_gini_right
+            weighted_gini = weighted_gini_left + weighted_gini_right
 
             if weighted_gini < best_gini:
                 best_gini = weighted_gini
