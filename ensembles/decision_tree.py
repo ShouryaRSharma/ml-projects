@@ -199,7 +199,7 @@ def find_best_split(
 
             y_left = pd.Series(y[left_mask])
             if len(y_left) == 0 or len(y[left_mask]) == len(y):
-                continue  # Decision node or useless node
+                continue  # Skip if split doesn't separate samples (all on one side or empty split)
 
             y_right = pd.Series(y[right_mask])
 
